@@ -56,41 +56,72 @@ const headerGreeting = document.getElementById('header-greeting');
 const headerButtons = document.getElementById('header-buttons');
 
 // ---------- ROUTER ----------
+// ---------- NAVIGATE ----------
 function navigate(path){
   history.pushState({}, "", path);
   router();
 }
 
+// ---------- ROUTER ----------
 function router(){
   const path = window.location.pathname;
+  const segments = path.split("/").filter(Boolean); // remove empty strings
 
+  // ------------------ Not Logged In ------------------
   if(!currentUser){
     if(path === "/register") return renderRegister();
     if(path === "/login") return renderLogin();
     return renderWelcome();
   }
 
+  // ------------------ Logged In ------------------
+  // Basic pages
   switch(path){
     case "/":
     case "/home":
-      renderHome();
-      break;
+      return renderHome();
     case "/profile":
-      renderProfile();
-      break;
+      return renderProfile();
     case "/timetable":
-      renderTimetable();
-      break;
+      return renderTimetable();
     case "/admin":
-      renderAdmin();
-      break;
-    default:
-      renderHome();
+      return renderAdmin();
   }
+
+  // ------------------ Recording Flow ------------------
+  if(segments[0] === "recording"){
+    // /recording → Subjects page
+    if(segments.length === 1) return renderSubjects();
+
+    // /recording/:subject → Type selection page
+    if(segments.length === 2){
+      const subject = segments[1];
+      return renderType(subject);
+    }
+
+    // /recording/:subject/:type → Lesson list page
+    if(segments.length === 3){
+      const subject = segments[1];
+      const type = segments[2];
+      return renderLessons(subject, type);
+    }
+
+    // /recording/:subject/:type/:day → Single lesson page
+    if(segments.length === 4){
+      const subject = segments[1];
+      const type = segments[2];
+      const day = segments[3];
+      return openLessonPage(subject, type, day);
+    }
+  }
+
+  // ------------------ Default fallback ------------------
+  renderHome();
 }
 
-// Back / Forward support
+// ---------- Back / Forward support ----------
 window.addEventListener("popstate", router);
+
 
 
 
@@ -836,9 +867,9 @@ function renderSubjects(){
   `;
 
   // 🔹 Attach click events
-  document.getElementById("btn-maths").onclick = () => renderType("maths");
-  document.getElementById("btn-physics").onclick = () => renderType("physics");
-  document.getElementById("btn-chemistry").onclick = () => renderType("chemistry");
+  document.getElementById("btn-maths").onclick = () => navigate("/recording/maths");
+    document.getElementById("btn-physics").onclick = () => navigate("/recording/physics");
+    document.getElementById("btn-chemistry").onclick = () => navigate("/recording/chemistry");
 }
 
 
@@ -867,11 +898,8 @@ function renderType(subject){
     </div>
   `;
 
-  document.getElementById("btn-theory")
-    .addEventListener("click", ()=> renderLessons(subject,"theory"));
-
-  document.getElementById("btn-revision")
-    .addEventListener("click", ()=> renderLessons(subject,"revision"));
+  document.getElementById("btn-theory").onclick = () => navigate(`/recording/${subject}/theory`);
+    document.getElementById("btn-revision").onclick = () => navigate(`/recording/${subject}/revision`);
 }
 
 
@@ -920,8 +948,7 @@ async function renderLessons(subject, type){
     lessonBtn.textContent = title;
 
     row.appendChild(lessonBtn);
-    lessonBtn.onclick = ()=>{
-  openLessonPage(subject, type, day);
+    lessonBtn.onclick = () => navigate(`/recording/${subject}/${type}/${day}`);
 };
 
 
@@ -1426,7 +1453,6 @@ body{background:black;color:white;min-height:100vh;}
 
 </body>
 </html>
-
 
 
 
