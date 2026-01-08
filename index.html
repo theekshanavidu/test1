@@ -1,11 +1,9 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-  <meta name="description" content="This is a study plan website for students. Daily study schedules, tips, and learning guidance.">
-  <meta name="keywords" content="study plan, education, student timetable, learning tips">
+<meta name="description" content="This is a study plan website for students. Daily study schedules, tips, and learning guidance.">
+<meta name="keywords" content="study plan, education, student timetable, learning tips">
 <meta name="author" content="Theekshana Vidu">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Study Tracker</title>
@@ -14,27 +12,18 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-slate-900 text-white">
+<header class="p-4 flex justify-between items-center bg-slate-800">
+  <div id="header-greeting">Loading...</div>
+  <div id="header-buttons" class="flex gap-2"></div>
+</header>
+<main id="app-container" class="p-4"></main>
 
-
-<!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  onAuthStateChanged,
-  signOut,
-  updateProfile,
-  updateEmail,
-  GoogleAuthProvider,
-  signInWithPopup
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, updateEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, addDoc, collection, getDocs, getDoc, query, where, updateDoc, deleteDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-
 
 const firebaseConfig = {
     apiKey: "AIzaSyDYhulc8Qz_xGfIeb1g9A6BGO2wwbrz82M",
@@ -49,83 +38,12 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 const ADMIN_UID = "m1rddMA36WbVunFW3B0BzuqOwyI2";
-
 let currentUser = null;
 const appContainer = document.getElementById('app-container');
 const headerGreeting = document.getElementById('header-greeting');
 const headerButtons = document.getElementById('header-buttons');
 
-// ---------- ROUTER ----------
-// ---------- NAVIGATE ----------
-function navigate(path){
-  history.pushState({}, "", path);
-  router();
-}
-
-// ---------- ROUTER ----------
-function router(){
-  const path = window.location.pathname;
-  const segments = path.split("/").filter(Boolean); // remove empty strings
-
-  // ------------------ Not Logged In ------------------
-  if(!currentUser){
-    if(path === "/register") return renderRegister();
-    if(path === "/login") return renderLogin();
-    return renderWelcome();
-  }
-
-  // ------------------ Logged In ------------------
-  // Basic pages
-  switch(path){
-    case "/":
-    case "/home":
-      return renderHome();
-    case "/profile":
-      return renderProfile();
-    case "/timetable":
-      return renderTimetable();
-    case "/admin":
-      return renderAdmin();
-  }
-
-  // ------------------ Recording Flow ------------------
-  if(segments[0] === "recording"){
-    // /recording → Subjects page
-    if(segments.length === 1) return renderSubjects();
-
-    // /recording/:subject → Type selection page
-    if(segments.length === 2){
-      const subject = segments[1];
-      return renderType(subject);
-    }
-
-    // /recording/:subject/:type → Lesson list page
-    if(segments.length === 3){
-      const subject = segments[1];
-      const type = segments[2];
-      return renderLessons(subject, type);
-    }
-
-    // /recording/:subject/:type/:day → Single lesson page
-    if(segments.length === 4){
-      const subject = segments[1];
-      const type = segments[2];
-      const day = segments[3];
-      return openLessonPage(subject, type, day);
-    }
-  }
-
-  // ------------------ Default fallback ------------------
-  renderHome();
-}
-
-// ---------- Back / Forward support ----------
-window.addEventListener("popstate", router);
-
-
-
-
-// ---------- Greeting ----------
+// ------------------- GREETING -------------------
 function getGreeting(name){
   const h = new Date().getHours();
   let greeting = h < 12 ? "Good Morning" : h < 17 ? "Good Afternoon" : "Good Evening";
@@ -138,37 +56,92 @@ function updateGreeting(){
 }
 setInterval(updateGreeting, 1000);
 
-// ---------- Auth Listener ----------
-onAuthStateChanged(auth, u => {
-  currentUser = u;
-  
-  // Admin නම් displayName වෙනස් කරන්න
-  if(currentUser && currentUser.uid === ADMIN_UID) {
-    currentUser.displayName = "Admin";
+// ------------------- HEADER -------------------
+function renderHeader(){
+  headerButtons.innerHTML='';
+  if(currentUser){
+    const homeBtn = createLiquidButton("Home",()=>{router("/home")});
+    const profileBtn = createLiquidButton("Profile",()=>{router("/profile")});
+    const timetableBtn = createLiquidButton("Time Table", ()=>{router("/timetable")});
+    headerButtons.appendChild(timetableBtn);
+    headerButtons.appendChild(homeBtn);
+    headerButtons.appendChild(profileBtn);
+    if(currentUser.uid===ADMIN_UID){
+      const adminBtn = createLiquidButton("Admin Panel",()=>{router("/adminpanal")});
+      headerButtons.appendChild(adminBtn);
+    }
+    const logoutBtn = createLiquidButton("Logout", async ()=>{await signOut(auth); router("/login");});
+    headerButtons.appendChild(logoutBtn);
+  }else{
+    const loginBtn = createLiquidButton("Login",()=>{router("/login")});
+    const regBtn = createLiquidButton("Register",()=>{router("/register")});
+    headerButtons.appendChild(loginBtn);
+    headerButtons.appendChild(regBtn);
   }
+}
+function createLiquidButton(text, onClick){
+  const btn = document.createElement('button');
+  btn.className = 'liquid-btn';
+  btn.textContent = text;
+  btn.onclick = onClick;
+  return btn;
+}
 
-  // Header update කරන්න
+// ------------------- AUTH STATE -------------------
+onAuthStateChanged(auth, u=>{
+  currentUser = u;
+  if(currentUser && currentUser.uid===ADMIN_UID) currentUser.displayName="Admin";
   renderHeader();
-
-  // Old if/else replace with router()
-  router(); // ← centralized routing, automatically redirects to correct page
+  if(!location.pathname || location.pathname==="/") router(currentUser?"/home":"/login");
+  else router(location.pathname);
 });
 
+// ------------------- ROUTER -------------------
+function router(path){
+  path = path || "/";
+  history.pushState({}, "", path);
+  const segments = path.split("/").filter(Boolean);
 
+  if(segments[0]==="login") renderLogin();
+  else if(segments[0]==="register") renderRegister();
+  else if(segments[0]==="home") renderHome();
+  else if(segments[0]==="profile") renderProfile();
+  else if(segments[0]==="timetable") renderTimetable();
+  else if(segments[0]==="adminpanal") renderAdmin();
+  else if(segments[0]==="recording"){
+    if(segments[1]){ // chemistry, physics, combine
+      const subject = segments[1];
+      if(segments[2]==="revision" || segments[2]==="theory"){
+        const type = segments[2];
+        if(segments[3] && segments[3].startsWith("lesson")) {
+          const lessonNum = segments[3].replace("lesson","");
+          openLessonPage(subject,type,lessonNum);
+        } else renderLessons(subject,type);
+      } else renderType(subject);
+    } else renderSubjects();
+  } else renderWelcome();
+}
+
+// handle back/forward browser buttons
+window.onpopstate = () => router(location.pathname);
+
+// ------------------- PLACEHOLDER FOR EXISTING FUNCTIONS -------------------
+// All your functions for renderWelcome, renderLogin, renderRegister, renderHome, renderProfile, renderTimetable, renderSubjects, renderType, renderLessons, openLessonPage, renderAdmin, etc., remain unchanged.
+// Copy all your existing JS code here without modification (as in your original HTML/JS file).
 
 // ---------- Header ----------
 function renderHeader(){
   headerButtons.innerHTML='';
   if(currentUser){
-    const homeBtn = createLiquidButton("Home",()=>navigate("/home"));
-        const profileBtn = createLiquidButton("Profile",()=>navigate("/profile"));
-        const timetableBtn = createLiquidButton("Time Table",()=>navigate("/timetable"));
+    const homeBtn = createLiquidButton("Home",()=>renderHome());
+    const profileBtn = createLiquidButton("Profile",()=>renderProfile());
+    const timetableBtn = createLiquidButton("Time Table", ()=>renderTimetable());
     headerButtons.appendChild(timetableBtn);
     headerButtons.appendChild(homeBtn);
     headerButtons.appendChild(profileBtn);
 
     if(currentUser.uid===ADMIN_UID){
-      const adminBtn = createLiquidButton("Admin Panel",()=>navigate("/admin"));
+      const adminBtn = createLiquidButton("Admin Panel",()=>renderAdmin());
       headerButtons.appendChild(adminBtn);
     }
 
@@ -176,8 +149,8 @@ function renderHeader(){
     headerButtons.appendChild(logoutBtn);
 
   }else{
-    const loginBtn = createLiquidButton("Login",()=>navigate("/login"));
-        const regBtn = createLiquidButton("Register",()=>navigate("/register"));
+    const loginBtn = createLiquidButton("Login",()=>renderLogin());
+    const regBtn = createLiquidButton("Register",()=>renderRegister());
     headerButtons.appendChild(loginBtn);
     headerButtons.appendChild(regBtn);
   }
@@ -867,9 +840,9 @@ function renderSubjects(){
   `;
 
   // 🔹 Attach click events
-  document.getElementById("btn-maths").onclick = () => navigate("/recording/maths");
-    document.getElementById("btn-physics").onclick = () => navigate("/recording/physics");
-    document.getElementById("btn-chemistry").onclick = () => navigate("/recording/chemistry");
+  document.getElementById("btn-maths").onclick = () => renderType("maths");
+  document.getElementById("btn-physics").onclick = () => renderType("physics");
+  document.getElementById("btn-chemistry").onclick = () => renderType("chemistry");
 }
 
 
@@ -898,8 +871,11 @@ function renderType(subject){
     </div>
   `;
 
-  document.getElementById("btn-theory").onclick = () => navigate(`/recording/${subject}/theory`);
-    document.getElementById("btn-revision").onclick = () => navigate(`/recording/${subject}/revision`);
+  document.getElementById("btn-theory")
+    .addEventListener("click", ()=> renderLessons(subject,"theory"));
+
+  document.getElementById("btn-revision")
+    .addEventListener("click", ()=> renderLessons(subject,"revision"));
 }
 
 
@@ -948,7 +924,8 @@ async function renderLessons(subject, type){
     lessonBtn.textContent = title;
 
     row.appendChild(lessonBtn);
-    lessonBtn.onclick = () => navigate(`/recording/${subject}/${type}/${day}`);
+    lessonBtn.onclick = ()=>{
+  openLessonPage(subject, type, day);
 };
 
 
@@ -1393,7 +1370,6 @@ window.moveContent = moveContent;
 window.addContent = addContent;
 window.deleteContent = deleteContent;
 window.deleteRecording = deleteRecording;
-router();
 
 
 
@@ -1453,12 +1429,3 @@ body{background:black;color:white;min-height:100vh;}
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
